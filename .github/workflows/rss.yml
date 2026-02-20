@@ -1,0 +1,30 @@
+name: RSS to Telegram
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"  # cada 5 minutos
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check RSS
+        run: |
+          FEED="https://rss.app/feeds/c3Hr9f9I5GIxbAJQ.xml"
+
+          # Tomar solo el primer título del feed (sin repetidos)
+          LAST_TITLE=$(curl -s "$FEED" | grep -m1 "<title>" | sed 's/.*<title>//;s/<\/title>.*//')
+
+          # Tomar solo el link del feed
+          LAST_LINK=$(curl -s "$FEED" | grep -m1 "<link>" | sed 's/.*<link>//;s/<\/link>.*//')
+
+          # Guardar en archivo combinado para no repetir
+          LAST_COMBINED="$LAST_TITLE|$LAST_LINK"
+
+          # Comparar con el último enviado
+          if [ "$LAST_COMBINED" != "$(cat last.txt 2>/dev/null)" ]; then
+            echo "$LAST_COMBINED" > last.txt
+            # Enviar mensaje a Telegram: solo el título y link
+            curl "https://api.telegram.org/bot7838373497:AAFU6qWa8GYgSQm8WT1tjXaBmIdkPBjkDkg/sendMessage?chat_id=6436305990&text=$LAST_TITLE%0A$LAST_LINK"
+          fi
