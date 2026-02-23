@@ -1,0 +1,22 @@
+name: RSS to Telegram
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check RSS
+        run: |
+          FEED="https://rss.app/feeds/c3Hr9f9I5GIxbAJQ.xml"
+
+          ITEM=$(curl -s "$FEED" | awk '/<item>/,/<\/item>/' | head -n 20)
+          TITLE=$(echo "$ITEM" | grep "<title>" | head -1 | sed 's/.*<title>//;s/<\/title>.*//')
+          LINK=$(echo "$ITEM" | grep "<link>" | head -1 | sed 's/.*<link>//;s/<\/link>.*//')
+
+          curl -s -X POST "https://api.telegram.org/bot7838373497:AAFU6qWa8GYgSQm8WT1tjXaBmIdkPBjkDkg/sendMessage" \
+            -d chat_id=6436305990 \
+            --data-urlencode "text=${TITLE} ${LINK}"
