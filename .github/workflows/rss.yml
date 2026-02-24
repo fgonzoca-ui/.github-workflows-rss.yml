@@ -1,0 +1,50 @@
+name: RSS Bot
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+jobs:
+  rss:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check RSS
+        run: |
+          FEED="https://rss.app/feeds/c3Hr9f9I5GIxbAJQ.xml"
+
+          ITEM=$(curl -s "$FEED" | awk '/<item>/,/<\/item>/' | head -n 20)
+          TITLE=$(echo "$ITEM" | grep "<title>" | head -1 | sed 's/.*<title>//;s/<\/title>.*//')
+          LINK=$(echo "$ITEM" | grep "<link>" | head -1 | sed 's/.*<link>//;s/<\/link>.*//')
+
+          if [ -f last.txt ]; then
+            LAST=$(cat last.txt)
+          else
+            LAST=""
+          fi
+
+          if [ -n "$LINK" ] && [ "$LINK" != "$LAST" ]; then
+            echo "Nuevo link detectado: $LINK"
+            
+            # Enviar a Telegram
+            curl -s -X POST "https://api.telegram.org/bot7838373497:AAFU6qWa8GYgSQm8WT1tjXaBmIdkPBjkDkg/sendMessage" \
+              -d chat_id=6436305990 \
+              --data-urlencode "text=DM Setter Mundial: ${TITLE} ${LINK}"
+
+            # Guardar para la siguiente revisión
+            echo "$LINK" > last.txt
+
+            # Guardar cambios en GitHub para que 'last.txt' se actualice
+            git config user.name "github-actions"
+            git config user.email "actions@github.com"
+            git add last.txt
+            git commit -m "Update last RSS item" || exit 0
+            git push
+          else
+            echo "Sin cambios en DM Setter Mundial."
+          fi
